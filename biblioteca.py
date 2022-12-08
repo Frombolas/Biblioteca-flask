@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, session, flash
 
 class Livro:
    def __init__(self, nome, genero, autor):
@@ -13,6 +13,8 @@ lista = [livro1, livro2, livro3]
 
 
 app = Flask(__name__)
+
+app.secret_key = 'guga071105'
 
 @app.route('/')
 def index():
@@ -30,9 +32,29 @@ def criar():
    autor = request.form['autor']
    livro = Livro(nome, genero, autor)
    lista.append(livro)
-   return render_template('lista.html', titulo="Livros", livros=lista)
+   return redirect('/')
 
 
+@app.route('/login')
+def login():
+   return render_template('login.html')
 
+
+@app.route('/autenticar', methods=["POST",])
+def autenticar():
+   if '12345' == request.form['senha']:
+      session['usuario_logado'] = request.form['usuario']
+      flash(request.form['usuario'] + ' logado com sucesso' )
+      return redirect('/')
+   else:
+      flash('senha ou usuario incorretos')
+      return redirect('/login')
+
+
+@app.route('/logout')
+def logout():
+   session['usuario_logado'] = None
+   flash('Logout efetuado com sucesso')
+   return redirect('/login')
 
 app.run(debug=True)

@@ -1,23 +1,45 @@
 from flask import Flask, render_template, request, redirect, session, flash, url_for
-
-class Livro:
-   def __init__(self, nome, genero, autor):
-       self.nome = nome
-       self.genero = genero
-       self.autor = autor
-
-livro1 = Livro('Manifesto do Partido Comunista','Filosofia', 'Karl Marx e Engels')
-livro2 = Livro('Às portas da Revolução','Filosofia', 'Vladmir Lenin')
-livro3 = Livro('O Capital','Filosofia', 'Karl Marx e Engels')
-lista = [livro1, livro2, livro3]
-
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
 app.secret_key = 'guga071105'
 
+app.config['SQLALCHEMY_DATABASE_URI'] = \
+   '{SGBD}://{usuario}:{senha}@{servidor}/{database}'.format(
+       SGBD = 'postgresql',
+       usuario = 'postgres',
+       senha = '123456',
+       servidor = 'localhost',
+       database = 'biblioteca-flask'
+   )
+
+db = SQLAlchemy(app)
+
+class Livros(db.Model):
+   id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+   nome = db.Column(db.String(150), nullable=False)
+   genero = db.Column(db.String(100), nullable=False)
+   autor = db.Column(db.String(150), nullable=False)
+   num_paginas = db.Column(db.Integer, nullable=False)
+
+   def __repr__(self):
+       return '<Name %r>' % self.nome
+
+
+class Usuarios(db.Model):
+   id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+   nome = db.Column(db.String(150), nullable=False)
+   username = db.Column(db.String(30), nullable=False)
+   senha = db.Column(db.String(30), nullable=False)
+
+   def __repr__(self):
+       return '<Name %r>' % self.nome
+
+
 @app.route('/')
 def index():
+   lista = Livros.query.order_by(Livros.id)
    return render_template('lista.html', titulo="Livros", livros=lista)
 
 
@@ -27,14 +49,28 @@ def cadastro():
        return redirect(url_for('login', proxima=url_for('cadastro')))
    return render_template('cadastro.html', titulo='Novo Livro')
    
-@app.route('/criar', methods=["POST",])
+@app.route('/criar', methods=['POST',])
 def criar():
    nome = request.form['nome']
    genero = request.form['genero']
    autor = request.form['autor']
-   livro = Livro(nome, genero, autor)
-   lista.append(livro)
+   num_paginas = request.form['num_paginas']
+
+   livro = Livros.query.filter_by(nome=nome).first()
+
+   if livro:
+       flash('Livro já existente!')
+       return redirect(url_for('index'))
+
+   novo_livro = Livros(nome=nome, genero=genero, autor=autor, num_paginas=num_paginas)
+
+   db.session.add(novo_livro)
+   db.session.commit()
+
+   flash('Livro criado com sucesso!')
    return redirect(url_for('index'))
+
+
 
 
 @app.route('/login')
